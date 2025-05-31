@@ -1,36 +1,31 @@
-import { useDeferredValue, useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
 export default function TimerSection() {
   const [time, setTime] = useState(0);
-  const [Running, setIsRunnig] = useState(false);
+  const [running, setRunning] = useState(false);
   const [editstate, setEditstate] = useState({ field: null, value: "" });
+  const [showTimeUp, setShowTimeUp] = useState(false);
 
-  const hrRef = useRef(null);
-  const minRef = useRef(null);
-  const secondsRef = useRef(null);
+  useEffect(() => {
+    if (!running) return;
 
-  useEffect(function () {
-    if (!Running) return;
-
-    const interval = setInterval(function () {
+    const interval = setInterval(() => {
       setTime((prev) => {
-        if (prev <= 0) {
-          setIsRunnig(false);
+        if (prev <= 1) {
+          setRunning(false);
+          setShowTimeUp(true);
           return 0;
         }
         return prev - 1;
-      }, 1000);
+      });
+    }, 1000);
 
-      return () => clearInterval(interval);
-    });
-  });
+    return () => clearInterval(interval);
+  }, [running]);
 
   function formatTime(totalSeconds) {
     const hr = String(Math.floor(totalSeconds / 3600)).padStart(2, "0");
-    const mins = String(Math.floor((totalSeconds % 3600) / 60)).padStart(
-      2,
-      "0"
-    );
+    const mins = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, "0");
     const sec = String(totalSeconds % 60).padStart(2, "0");
     return { hr, mins, sec };
   }
@@ -43,14 +38,8 @@ export default function TimerSection() {
     const ss = parseInt(s, 10);
 
     if (
-      isNaN(hh) ||
-      isNaN(mm) ||
-      isNaN(ss) ||
-      hh < 0 ||
-      mm < 0 ||
-      mm > 59 ||
-      ss < 0 ||
-      ss > 59
+      isNaN(hh) || isNaN(mm) || isNaN(ss) ||
+      hh < 0 || mm < 0 || mm > 59 || ss < 0 || ss > 59
     ) {
       return 0;
     }
@@ -77,17 +66,21 @@ export default function TimerSection() {
 
     setTime(newTotalSecond);
     setEditstate({ field: null, value: "" });
-    if(newTotalSecond > 0) setIsRunnig(true);
+    setShowTimeUp(false);
+
+    if (newTotalSecond > 0) {
+      setRunning(true); 
+    }
   }
 
   function handleEditField(field) {
     if (editstate.field === field) {
       saveEditField();
     } else {
-      setIsRunnig(false);
+      setRunning(false);
       setEditstate({
         field,
-        value: { hr, mins, sec }[field].replace(/^0+/, "") || 0,
+        value: { hr, mins, sec }[field].replace(/^0+/, "") || "0",
       });
     }
   }
@@ -149,14 +142,45 @@ export default function TimerSection() {
                 gap: "10px",
               }}
             >
-              <input type="text" style={inputStyle} readOnly={editstate.field !== "hr"} value={editstate.field === "hr"? editstate.value : hr} 
-           />
+              <input
+                type="text"
+                style={inputStyle}
+                readOnly={editstate.field !== "hr"}
+                value={editstate.field === "hr" ? editstate.value : hr}
+                onClick={() => handleEditField("hr")}
+                onChange={(e) =>
+                  setEditstate({ ...editstate, value: e.target.value })
+                }
+              />
               <span>:</span>
-              <input type="text" style={inputStyle} readOnly={editstate.field !== "mins"} value={mins} />
+              <input
+                type="text"
+                style={inputStyle}
+                readOnly={editstate.field !== "mins"}
+                value={editstate.field === "mins" ? editstate.value : mins}
+                onClick={() => handleEditField("mins")}
+                onChange={(e) =>
+                  setEditstate({ ...editstate, value: e.target.value })
+                }
+              />
               <span>:</span>
-              <input type="text" style={inputStyle} readOnly={editstate.field !== "sec"} value={sec} />
+              <input
+                type="text"
+                style={inputStyle}
+                readOnly={editstate.field !== "sec"}
+                value={editstate.field === "sec" ? editstate.value : sec}
+                onClick={() => handleEditField("sec")}
+                onChange={(e) =>
+                  setEditstate({ ...editstate, value: e.target.value })
+                }
+              />
             </div>
           </div>
+
+          {showTimeUp && (
+            <div style={{ color: "white", fontSize: "20px" }}>⏰ Time’s up!</div>
+          )}
+
           <div>
             <button
               style={{
@@ -164,15 +188,23 @@ export default function TimerSection() {
                 padding: "0.8em 1.9em",
                 marginRight: "70px",
               }}
-              onClick={() => setIsRunnig(!Running)}
+              onClick={() => {
+                if (editstate.field) {
+                  saveEditField();
+                } else {
+                  setRunning(!running);
+                }
+              }}
             >
-              {Running ? "Pause" : "Start"}
+              {running ? "Pause" : "Start"}
             </button>
             <button
               style={{ borderRadius: "8px", padding: "0.8em 1.9em" }}
               onClick={() => {
-                setIsRunnig(!Running);
-                settotalSeconds(0);
+                setRunning(false);
+                setTime(0);
+                setEditstate({ field: null, value: "" });
+                setShowTimeUp(false);
               }}
             >
               Reset
